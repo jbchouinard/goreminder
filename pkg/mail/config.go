@@ -1,38 +1,62 @@
 package mail
 
 import (
+	"crypto/tls"
 	"strconv"
 
 	"github.com/jbchouinard/goreminder/pkg/env"
 )
 
-type SmtpConfig struct {
-	Username string
-	Password string
-	Host     string
-	Port     uint16
+type MailConfig struct {
+	Username      string
+	Password      string
+	SmtpHost      string
+	SmtpPort      uint16
+	SmtpTlsConfig *tls.Config
+	ImapHost      string
+	ImapPort      uint16
+	ImapTlsConfig *tls.Config
 }
 
-func SmtpConfigFromEnv() (*SmtpConfig, error) {
-	username, err := env.Get("SMTP_USERNAME")
+func MailConfigFromEnv() (*MailConfig, error) {
+	username, err := env.Get("MAIL_USERNAME")
 	if err != nil {
 		return nil, err
 	}
-	password, err := env.Get("SMTP_PASSWORD")
+	password, err := env.Get("MAIL_PASSWORD")
 	if err != nil {
 		return nil, err
 	}
-	host, err := env.Get("SMTP_HOST")
+	smtpHost, err := env.Get("MAIL_SMTP_HOST")
 	if err != nil {
 		return nil, err
 	}
-	portstr, err := env.Get("SMTP_PORT")
+	smtpPortStr, err := env.Get("MAIL_SMTP_PORT")
 	if err != nil {
 		return nil, err
 	}
-	port, err := strconv.ParseUint(portstr, 10, 16)
+	smtpPort, err := strconv.ParseUint(smtpPortStr, 10, 16)
 	if err != nil {
 		return nil, err
 	}
-	return &SmtpConfig{username, password, host, uint16(port)}, nil
+	imapHost, err := env.Get("MAIL_IMAP_HOST")
+	if err != nil {
+		return nil, err
+	}
+	imapPortStr, err := env.Get("MAIL_IMAP_PORT")
+	if err != nil {
+		return nil, err
+	}
+	imapPort, err := strconv.ParseUint(imapPortStr, 10, 16)
+	if err != nil {
+		return nil, err
+	}
+	return &MailConfig{username, password, smtpHost, uint16(smtpPort), TlsConfig(smtpHost), imapHost, uint16(imapPort), TlsConfig(imapHost)}, nil
+}
+
+func TlsConfig(host string) *tls.Config {
+	return &tls.Config{
+		InsecureSkipVerify: false,
+		ServerName:         host,
+	}
 }

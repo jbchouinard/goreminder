@@ -1,7 +1,6 @@
 package mail
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/smtp"
 )
@@ -11,34 +10,23 @@ type SmtpClient struct {
 	smtpClient *smtp.Client
 }
 
-func SmtpConnect(host string, port uint16, username string, password string) (*SmtpClient, error) {
-	client, err := smtp.Dial(fmt.Sprintf("%v:%v", host, port))
+func SmtpConnect(conf *MailConfig) (*SmtpClient, error) {
+	client, err := smtp.Dial(fmt.Sprintf("%v:%v", conf.SmtpHost, conf.SmtpPort))
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.StartTLS(&tls.Config{
-		InsecureSkipVerify: true,
-		ServerName:         host,
-	})
+	err = client.StartTLS(conf.SmtpTlsConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.Auth(smtp.PlainAuth("", username, password, host))
+	err = client.Auth(smtp.PlainAuth("", conf.Username, conf.Password, conf.SmtpHost))
 	if err != nil {
 		return nil, err
 	}
 
-	return &SmtpClient{username, client}, nil
-}
-
-func SmtpConnectFromEnv() (*SmtpClient, error) {
-	conf, err := SmtpConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-	return SmtpConnect(conf.Host, conf.Port, conf.Username, conf.Password)
+	return &SmtpClient{conf.Username, client}, nil
 }
 
 func MakeMessage(from *string, to *string, subject *string, body *string) string {
