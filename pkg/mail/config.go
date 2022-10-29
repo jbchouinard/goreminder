@@ -3,7 +3,7 @@ package mail
 import (
 	"strconv"
 
-	"github.com/jbchouinard/goreminder/env"
+	"github.com/jbchouinard/goreminder/pkg/env"
 )
 
 type SmtpConfig struct {
