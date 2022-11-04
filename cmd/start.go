@@ -2,9 +2,13 @@ package cmd
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jbchouinard/goreminder/pkg/mail"
+	"github.com/jbchouinard/goreminder/pkg/reminder"
 	"github.com/spf13/cobra"
 )
 
@@ -23,18 +27,44 @@ var startCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		cMail := make(chan *mail.Mail)
-		cError := make(chan error)
 
-		fetcher := mail.MailFetcher{Conf: mailConf, Mail: cMail, Errors: cError}
+		messages := make(chan *mail.Mail, 100)
+		fetchErrors := make(chan error)
+		fetchDone := make(chan chan<- bool)
+		reminders := make(chan *reminder.Reminder, 100)
+		convertErrors := make(chan error)
+
+		fetcher := mail.MailFetcher{
+			Conf:   mailConf,
+			Mail:   messages,
+			Errors: fetchErrors,
+			Done:   fetchDone,
+		}
+
+		converter := reminder.ReminderMailConverter{
+			Mail:      messages,
+			Reminders: reminders,
+			Errors:    convertErrors,
+		}
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		go converter.Run()
 		go fetcher.Run(fetchWaitSeconds*time.Second, 10)
-
 		for {
 			select {
-			case err := <-cError:
-				log.Fatalf("Error: %q\n", err)
-			case msg := <-cMail:
-				log.Printf("%s: %s", msg.From, msg.Subject)
+			case sig := <-sigs:
+				log.Printf("Received signal %s, shutting down", sig)
+				done := make(chan bool)
+				fetchDone <- done
+				<-done
+				os.Exit(0)
+			case err := <-fetchErrors:
+				log.Printf("Error: %q\n", err)
+			case err := <-convertErrors:
+				log.Printf("Error: %q\n", err)
+			case rem := <-reminders:
+				log.Printf("TO %s AT %s: %s", rem.Recipient, rem.DueTime, rem.Content)
 			}
 		}
 	}}

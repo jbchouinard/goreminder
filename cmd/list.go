@@ -21,7 +21,7 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		imapClient, err := mail.ImapConnect(mailConf)
+		imapClient, err := mail.ConnectImap(mailConf)
 		if err != nil {
 			log.Fatal(err)
 		}

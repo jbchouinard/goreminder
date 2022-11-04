@@ -20,7 +20,7 @@ var sendCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		smtpClient, err := mail.SmtpConnect(mailConf)
+		smtpClient, err := mail.ConnectSmtp(mailConf)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-func ImapConnect(conf *MailConfig) (*client.Client, error) {
+func ConnectImap(conf *MailConfig) (*client.Client, error) {
 	client, err := client.DialTLS(fmt.Sprintf("%v:%v", conf.ImapHost, conf.ImapPort), conf.ImapTlsConfig)
 	if err != nil {
 		return nil, err
@@ -23,22 +23,31 @@ type Mail struct {
 	MessageId string
 	From      string
 	Subject   string
+	Location  *time.Location
 }
 
 type MailFetcher struct {
 	Conf   *MailConfig
 	Mail   chan<- *Mail
 	Errors chan<- error
+	Done   <-chan chan<- bool
 }
 
 func (mc *MailFetcher) Run(wait time.Duration, maxMessages uint32) error {
-	imapClient, err := ImapConnect(mc.Conf)
+	imapClient, err := ConnectImap(mc.Conf)
 	if err != nil {
 		return err
 	}
 	defer imapClient.Logout()
 	for {
-		time.Sleep(wait)
+		select {
+		case done := <-mc.Done:
+			close(mc.Mail)
+			close(mc.Errors)
+			done <- true
+		case <-time.After(wait):
+		}
+
 		mbox, err := imapClient.Select(mc.Conf.MailboxIn, false)
 		if err != nil {
 			mc.Errors <- err
@@ -69,6 +78,7 @@ func (mc *MailFetcher) Run(wait time.Duration, maxMessages uint32) error {
 				From:      message.Envelope.From[0].Address(),
 				Subject:   message.Envelope.Subject,
 				MessageId: message.Envelope.MessageId,
+				Location:  mc.Conf.Location,
 			}
 		}
 		if err := <-done; err != nil {

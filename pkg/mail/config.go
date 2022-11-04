@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -21,6 +22,7 @@ type MailConfig struct {
 	ImapHost         string
 	ImapPort         uint16
 	ImapTlsConfig    *tls.Config
+	Location         *time.Location
 }
 
 func ReadConfig() (*MailConfig, error) {
@@ -28,10 +30,17 @@ func ReadConfig() (*MailConfig, error) {
 		"mailbox.in", "mailbox.processed",
 		"smtp.username", "smtp.password", "smtp.host", "smtp.port",
 		"imap.username", "imap.password", "imap.host", "imap.port",
+		"timezone",
 	} {
 		if !viper.IsSet(key) {
 			return nil, fmt.Errorf("missing configuration key %q", key)
 		}
+	}
+
+	timezone := viper.GetString("timezone")
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		return nil, err
 	}
 
 	smtpHost := viper.GetString("smtp.host")
@@ -49,6 +58,7 @@ func ReadConfig() (*MailConfig, error) {
 		ImapHost:         imapHost,
 		ImapPort:         viper.GetUint16("imap.port"),
 		ImapTlsConfig:    TlsConfig(imapHost),
+		Location:         location,
 	}, nil
 }
 

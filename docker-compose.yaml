@@ -3,6 +3,8 @@ version: '3'
 services:
   db:
     image: postgres:15-alpine
+    ports:
+      - 5432:5432
     healthcheck:
       test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root" ]
       timeout: 30s
@@ -14,7 +16,7 @@ services:
       - POSTGRES_PASSWORD=root
     volumes:
       - ./scripts/db:/docker-entrypoint-initdb.d/
-      - pgdata:var/lib/postgresql/data 
+      - pgdata:/var/lib/postgresql/data 
 
 volumes:
   pgdata: {}

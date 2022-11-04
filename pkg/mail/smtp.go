@@ -10,7 +10,7 @@ type SmtpClient struct {
 	smtpClient *smtp.Client
 }
 
-func SmtpConnect(conf *MailConfig) (*SmtpClient, error) {
+func ConnectSmtp(conf *MailConfig) (*SmtpClient, error) {
 	client, err := smtp.Dial(fmt.Sprintf("%v:%v", conf.SmtpHost, conf.SmtpPort))
 	if err != nil {
 		return nil, err
