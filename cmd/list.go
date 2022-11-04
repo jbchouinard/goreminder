@@ -17,7 +17,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List mailboxes.",
 	Run: func(cmd *cobra.Command, args []string) {
-		mailConf, err := mail.MailConfigFromEnv("MAILREMINDER_")
+		mailConf, err := mail.ReadConfig()
 		if err != nil {
 			log.Fatal(err)
 		}

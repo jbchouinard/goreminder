@@ -17,3 +17,4 @@ bin/
 
 # Env secrets file
 .envrc
+mxremind.yaml

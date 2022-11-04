@@ -19,7 +19,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the mail reminder service.",
 	Run: func(cmd *cobra.Command, args []string) {
-		mailConf, err := mail.MailConfigFromEnv(configEnvPrefix)
+		mailConf, err := mail.ReadConfig()
 		if err != nil {
 			log.Fatal(err)
 		}

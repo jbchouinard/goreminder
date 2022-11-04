@@ -21,12 +21,12 @@ func SmtpConnect(conf *MailConfig) (*SmtpClient, error) {
 		return nil, err
 	}
 
-	err = client.Auth(smtp.PlainAuth("", conf.Username, conf.Password, conf.SmtpHost))
+	err = client.Auth(smtp.PlainAuth("", conf.SmtpUsername, conf.SmtpPassword, conf.SmtpHost))
 	if err != nil {
 		return nil, err
 	}
 
-	return &SmtpClient{conf.Username, client}, nil
+	return &SmtpClient{conf.SmtpUsername, client}, nil
 }
 
 func MakeMessage(from *string, to *string, subject *string, body *string) string {

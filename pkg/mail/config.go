@@ -4,83 +4,56 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"strconv"
 
-	"github.com/jbchouinard/goreminder/pkg/env"
+	"github.com/spf13/viper"
 )
 
 type MailConfig struct {
-	Username         string
-	Password         string
 	MailboxIn        string
 	MailboxProcessed string
+	SmtpUsername     string
+	SmtpPassword     string
 	SmtpHost         string
 	SmtpPort         uint16
 	SmtpTlsConfig    *tls.Config
+	ImapUsername     string
+	ImapPassword     string
 	ImapHost         string
 	ImapPort         uint16
 	ImapTlsConfig    *tls.Config
 }
 
-func MailConfigFromEnv(prefix string) (*MailConfig, error) {
-	env := env.EnvGetter{Prefix: prefix}
-	username, err := env.Get("USERNAME", nil)
-	if err != nil {
-		return nil, err
+func ReadConfig() (*MailConfig, error) {
+	for _, key := range []string{
+		"mailbox.in", "mailbox.processed",
+		"smtp.username", "smtp.password", "smtp.host", "smtp.port",
+		"imap.username", "imap.password", "imap.host", "imap.port",
+	} {
+		if !viper.IsSet(key) {
+			return nil, fmt.Errorf("missing configuration key %q", key)
+		}
 	}
-	password, err := env.Get("PASSWORD", nil)
-	if err != nil {
-		return nil, err
-	}
-	smtpHost, err := env.Get("SMTP_HOST", nil)
-	if err != nil {
-		return nil, err
-	}
-	defaultSmtpPort := "993"
-	smtpPortStr, err := env.Get("SMTP_PORT", &defaultSmtpPort)
-	if err != nil {
-		return nil, err
-	}
-	smtpPort, err := strconv.ParseUint(smtpPortStr, 10, 16)
-	if err != nil {
-		return nil, err
-	}
-	imapHost, err := env.Get("IMAP_HOST", nil)
-	if err != nil {
-		return nil, err
-	}
-	imapPortStr, err := env.Get("IMAP_PORT", nil)
-	if err != nil {
-		return nil, err
-	}
-	imapPort, err := strconv.ParseUint(imapPortStr, 10, 16)
-	if err != nil {
-		return nil, err
-	}
-	mailboxIn, err := env.Get("MAILBOX_IN", nil)
-	if err != nil {
-		return nil, err
-	}
-	mailboxProcessed, err := env.Get("MAILBOX_PROCESSED", nil)
-	if err != nil {
-		return nil, err
-	}
+
+	smtpHost := viper.GetString("smtp.host")
+	imapHost := viper.GetString("imap.host")
 	return &MailConfig{
-		username,
-		password,
-		mailboxIn,
-		mailboxProcessed,
-		smtpHost,
-		uint16(smtpPort),
-		TlsConfig(smtpHost),
-		imapHost,
-		uint16(imapPort),
-		TlsConfig(imapHost),
+		MailboxIn:        viper.GetString("mailbox.in"),
+		MailboxProcessed: viper.GetString("mailbox.processed"),
+		SmtpUsername:     viper.GetString("smtp.username"),
+		SmtpPassword:     viper.GetString("smtp.password"),
+		SmtpHost:         smtpHost,
+		SmtpPort:         viper.GetUint16("smtp.port"),
+		SmtpTlsConfig:    TlsConfig(smtpHost),
+		ImapUsername:     viper.GetString("imap.username"),
+		ImapPassword:     viper.GetString("imap.password"),
+		ImapHost:         imapHost,
+		ImapPort:         viper.GetUint16("imap.port"),
+		ImapTlsConfig:    TlsConfig(imapHost),
 	}, nil
 }
 
 func (mc *MailConfig) Describe() string {
-	return fmt.Sprintf("%s:%s", mc.Username, mc.MailboxIn)
+	return fmt.Sprintf("%s:%s", mc.ImapUsername, mc.MailboxIn)
 }
 
 func (mc *MailConfig) Log(message string) {

@@ -16,7 +16,7 @@ var sendCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Short: "Send an email.",
 	Run: func(cmd *cobra.Command, args []string) {
-		mailConf, err := mail.MailConfigFromEnv("MAILREMINDER_")
+		mailConf, err := mail.ReadConfig()
 		if err != nil {
 			log.Fatal(err)
 		}

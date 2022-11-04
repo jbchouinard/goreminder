@@ -13,7 +13,7 @@ func ImapConnect(conf *MailConfig) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := client.Login(conf.Username, conf.Password); err != nil {
+	if err := client.Login(conf.ImapUsername, conf.ImapPassword); err != nil {
 		return nil, err
 	}
 	return client, nil
