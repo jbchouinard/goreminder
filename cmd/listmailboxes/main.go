@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	mailConf, err := mail.MailConfigFromEnv()
+	mailConf, err := mail.MailConfigFromEnv("MAIL_")
 	if err != nil {
 		log.Fatal(err)
 	}
