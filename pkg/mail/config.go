@@ -2,6 +2,8 @@ package mail
 
 import (
 	"crypto/tls"
+	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/jbchouinard/goreminder/pkg/env"
@@ -21,7 +23,7 @@ type MailConfig struct {
 }
 
 func MailConfigFromEnv(prefix string) (*MailConfig, error) {
-	env := env.EnvGetter{prefix}
+	env := env.EnvGetter{Prefix: prefix}
 	username, err := env.Get("USERNAME", nil)
 	if err != nil {
 		return nil, err
@@ -75,6 +77,18 @@ func MailConfigFromEnv(prefix string) (*MailConfig, error) {
 		uint16(imapPort),
 		TlsConfig(imapHost),
 	}, nil
+}
+
+func (mc *MailConfig) Describe() string {
+	return fmt.Sprintf("%s:%s", mc.Username, mc.MailboxIn)
+}
+
+func (mc *MailConfig) Log(message string) {
+	log.Printf("%s: %s", mc.Describe(), message)
+}
+
+func (mc *MailConfig) Logf(format string, p ...any) {
+	mc.Log(fmt.Sprintf(format, p...))
 }
 
 func TlsConfig(host string) *tls.Config {

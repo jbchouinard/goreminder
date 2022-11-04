@@ -9,11 +9,15 @@ type Sender interface {
 }
 
 type Reminder struct {
-	AtTime    time.Time
-	ToAddress string
-	Message   string
+	AtTime  time.Time
+	To      string
+	Message string
 }
 
 func (rem *Reminder) SendWith(sender Sender) error {
-	return sender.Send(rem.ToAddress, rem.Message, "")
+	return sender.Send(rem.To, rem.Message, "")
+}
+
+func Parse(s string) (*Reminder, error) {
+	return nil, nil
 }
