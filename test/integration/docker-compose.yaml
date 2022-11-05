@@ -18,5 +18,18 @@ services:
       - ./scripts/db:/docker-entrypoint-initdb.d/
       - pgdata:/var/lib/postgresql/data 
 
+  mail:
+    build: https://github.com/jbchouinard/docker-testing-mail.git
+    ports:
+    - "25:25"
+    - "143:143"
+    - "993:993"
+    environment:
+      - MAIL_DOMAIN=local.test
+      - MAIL_USER_1=reminders
+      - MAIL_PASSWORD_1=reminderspass
+      - MAIL_USER_2=alice
+      - MAIL_USER_2=alicepass
+
 volumes:
   pgdata: {}

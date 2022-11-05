@@ -4,21 +4,18 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
 	"os"
 	"strings"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
-
 var rootCmd = &cobra.Command{
 	Use:   "mxremind",
-	Short: "Set and send mail reminders.",
-	Long: `Sets reminders from emails and sends reminder emails
-	at the set times.`,
+	Short: "MxRemind mail reminder server and utilities.",
 }
 
 func Execute() {
@@ -28,10 +25,21 @@ func Execute() {
 	}
 }
 
+var cfgFile string
+var jsonLog bool
+
 func init() {
+	cobra.OnInitialize(initLogging)
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./mxremind.yaml)")
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default \"./mxremind.yaml\")")
+
+	startCmd.Flags().BoolVar(&jsonLog, "jsonlog", false, "output log in JSON format")
+
+	rootCmd.PersistentFlags().String("timezone", "America/Montreal", "timezone location")
+	viper.BindPFlag("timezone", rootCmd.PersistentFlags().Lookup("timezone"))
+
+	rootCmd.PersistentFlags().String("db", "", "database connection URL")
+	viper.BindPFlag("database.url", rootCmd.PersistentFlags().Lookup("db"))
 }
 
 func initConfig() {
@@ -47,17 +55,24 @@ func initConfig() {
 	}
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.SetEnvPrefix("MXREMIND_")
+	viper.SetEnvPrefix("MXREMIND")
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Printf("No config file found")
+			log.Info().Msg("no config file found")
 		} else {
-			log.Fatal("Error reading config file: ", err)
+			log.Fatal().Err(err).Msg("error reading configuration")
 		}
 	} else {
-		log.Print("Using config file: ", viper.ConfigFileUsed())
+		log.Info().Msgf("using config file %s", viper.ConfigFileUsed())
 	}
 
+}
+
+func initLogging() {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if !jsonLog {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
 }

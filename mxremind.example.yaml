@@ -1,0 +1,27 @@
+timezone: America/Montreal
+fetch_interval: 60
+send_interval: 60
+database:
+  url: postgresql://mxremind:mxremind@localhost:5432/mxremind
+  migrate: true
+mailbox:
+  in: Inbox
+  processed: Trash
+smtp:
+  address: myuser@example.com
+  password: mypassword123
+  host: smtp.example.com
+  port: 587
+  # authenticated: true
+  # tls:
+  #   enabled: true
+  #   insecure: false
+imap:
+  address: myuser@example.com
+  password: mypassword123
+  host: imap.example.com
+  port: 993
+  # authenticated: true
+  # tls:
+  #   enabled: true
+  #   insecure: false

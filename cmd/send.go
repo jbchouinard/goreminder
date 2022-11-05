@@ -3,7 +3,8 @@ package cmd
 import (
 	"log"
 
-	"github.com/jbchouinard/goreminder/pkg/mail"
+	"github.com/jbchouinard/mxremind/pkg/config"
+	"github.com/jbchouinard/mxremind/pkg/mail"
 	"github.com/spf13/cobra"
 )
 
@@ -14,13 +15,10 @@ func init() {
 var sendCmd = &cobra.Command{
 	Use:   "send <address> <subject>",
 	Args:  cobra.ExactArgs(2),
-	Short: "Send an email.",
+	Short: "Send an email with the configured SMTP account",
 	Run: func(cmd *cobra.Command, args []string) {
-		mailConf, err := mail.ReadConfig()
-		if err != nil {
-			log.Fatal(err)
-		}
-		smtpClient, err := mail.ConnectSmtp(mailConf)
+		conf := config.GetServerConfig("smtp")
+		smtpClient, err := mail.ConnectSmtp(conf)
 		if err != nil {
 			log.Fatal(err)
 		}

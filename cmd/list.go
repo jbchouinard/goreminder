@@ -5,7 +5,8 @@ import (
 	"log"
 
 	"github.com/emersion/go-imap"
-	"github.com/jbchouinard/goreminder/pkg/mail"
+	"github.com/jbchouinard/mxremind/pkg/config"
+	"github.com/jbchouinard/mxremind/pkg/mail"
 	"github.com/spf13/cobra"
 )
 
@@ -15,13 +16,10 @@ func init() {
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List mailboxes.",
+	Short: "List mailboxes for the configured IMAP account",
 	Run: func(cmd *cobra.Command, args []string) {
-		mailConf, err := mail.ReadConfig()
-		if err != nil {
-			log.Fatal(err)
-		}
-		imapClient, err := mail.ConnectImap(mailConf)
+		conf := config.GetServerConfig("imap")
+		imapClient, err := mail.ConnectImap(conf)
 		if err != nil {
 			log.Fatal(err)
 		}

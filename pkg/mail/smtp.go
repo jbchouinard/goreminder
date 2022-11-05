@@ -3,6 +3,8 @@ package mail
 import (
 	"fmt"
 	"net/smtp"
+
+	"github.com/jbchouinard/mxremind/pkg/config"
 )
 
 type SmtpClient struct {
@@ -10,27 +12,41 @@ type SmtpClient struct {
 	smtpClient *smtp.Client
 }
 
-func ConnectSmtp(conf *MailConfig) (*SmtpClient, error) {
-	client, err := smtp.Dial(fmt.Sprintf("%v:%v", conf.SmtpHost, conf.SmtpPort))
+func ConnectSmtp(conf *config.ServerConfig) (*SmtpClient, error) {
+	client, err := smtp.Dial(fmt.Sprintf("%v:%v", conf.Host, conf.Port))
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.StartTLS(conf.SmtpTlsConfig)
-	if err != nil {
-		return nil, err
+	if conf.Tls.Enabled {
+		err = client.StartTLS(conf.TlsConfig())
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	err = client.Auth(smtp.PlainAuth("", conf.SmtpUsername, conf.SmtpPassword, conf.SmtpHost))
-	if err != nil {
-		return nil, err
+	if conf.Authenticated {
+		err = client.Auth(smtp.PlainAuth("", conf.Address, conf.Password, conf.Host))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &SmtpClient{conf.SmtpUsername, client}, nil
+	return &SmtpClient{conf.Address, client}, nil
 }
 
 func MakeMessage(from *string, to *string, subject *string, body *string) string {
-	return fmt.Sprintf("From: %v\r\nTo: %v\r\nSubject: %v\r\n\r\n%v", *from, *to, *subject, *body)
+	return fmt.Sprintf(
+		"From: %v\r\n"+
+			"To: %v\r\n"+
+			"Subject: %v\r\n"+
+			"\r\n"+
+			"%v\r\n",
+		*from,
+		*to,
+		*subject,
+		*body,
+	)
 }
 
 func (client *SmtpClient) Send(to string, subject string, body string) error {
@@ -60,4 +76,18 @@ func (client *SmtpClient) Send(to string, subject string, body string) error {
 
 func (client *SmtpClient) Quit() error {
 	return client.smtpClient.Quit()
+}
+
+// SmtpSender uses a new connection for every e-mail.
+type SmtpSender struct {
+	Conf *config.ServerConfig
+}
+
+func (s *SmtpSender) Send(to string, subject string, body string) error {
+	client, err := ConnectSmtp(s.Conf)
+	if err != nil {
+		return err
+	}
+	defer client.Quit()
+	return client.Send(to, subject, body)
 }

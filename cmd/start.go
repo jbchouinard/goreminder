@@ -1,70 +1,112 @@
 package cmd
 
 import (
-	"log"
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/jbchouinard/goreminder/pkg/mail"
-	"github.com/jbchouinard/goreminder/pkg/reminder"
+	"github.com/jbchouinard/mxremind/pkg/config"
+	"github.com/jbchouinard/mxremind/pkg/db"
+	"github.com/jbchouinard/mxremind/pkg/mail"
+	"github.com/jbchouinard/mxremind/pkg/reminder"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-const fetchWaitSeconds = 10
-const configEnvPrefix = "MAILREMINDER_"
-
 func init() {
+	startCmd.Flags().Bool("migrate", false, "migrate database schema")
+	viper.BindPFlag("database.migrate", rootCmd.PersistentFlags().Lookup("migrate"))
+
+	viper.SetDefault("send_interval", 60)
+	viper.SetDefault("fetch_interval", 60)
+
 	rootCmd.AddCommand(startCmd)
 }
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the mail reminder service.",
+	Short: "Start the mail reminder service",
 	Run: func(cmd *cobra.Command, args []string) {
-		mailConf, err := mail.ReadConfig()
+		conf := config.GetConfig()
+
+		db.SetDatabaseUrl(conf.Database.URL)
+		dbpool, err := db.Connect()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err).Msg("error connecting to database")
+		}
+		defer db.Close()
+
+		if conf.Database.Migrate {
+			if err := db.Migrate(context.Background(), conf.Database.URL); err != nil {
+				log.Fatal().Err(err).Msg("error applying database migrations")
+			}
 		}
 
-		messages := make(chan *mail.Mail, 100)
-		fetchErrors := make(chan error)
+		// Receive and save new reminders
 		fetchDone := make(chan chan<- bool)
-		reminders := make(chan *reminder.Reminder, 100)
-		convertErrors := make(chan error)
+		fetcher, messages, fetcherErrors := mail.NewMailFetcher(conf, 10, fetchDone)
+		converter, reminders, converterErrors := reminder.NewReminderMailConverter(messages)
+		saver, saverErrors := reminder.NewReminderSaver(dbpool, reminders)
 
-		fetcher := mail.MailFetcher{
-			Conf:   mailConf,
-			Mail:   messages,
-			Errors: fetchErrors,
-			Done:   fetchDone,
-		}
-
-		converter := reminder.ReminderMailConverter{
-			Mail:      messages,
-			Reminders: reminders,
-			Errors:    convertErrors,
-		}
+		// Query and send due reminders
+		queryDone := make(chan chan<- bool)
+		querier, dueReminders, querierErrors := reminder.NewDueReminderQuerier(dbpool, queryDone)
+		sender, senderErrors := reminder.NewReminderSender(dueReminders, &mail.SmtpSender{Conf: conf.SMTP})
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		go fetcher.Run(time.Duration(conf.FetchInterval) * time.Second)
 		go converter.Run()
-		go fetcher.Run(fetchWaitSeconds*time.Second, 10)
+		go saver.Run()
+		go querier.Run(time.Duration(conf.SendInterval) * time.Second)
+		go sender.Run()
 		for {
 			select {
 			case sig := <-sigs:
-				log.Printf("Received signal %s, shutting down", sig)
+				log.Info().Msgf("received signal %s, shutting down", sig)
 				done := make(chan bool)
 				fetchDone <- done
+				queryDone <- done
+				close(fetchDone)
+				close(queryDone)
+				<-done
 				<-done
 				os.Exit(0)
-			case err := <-fetchErrors:
-				log.Printf("Error: %q\n", err)
-			case err := <-convertErrors:
-				log.Printf("Error: %q\n", err)
-			case rem := <-reminders:
-				log.Printf("TO %s AT %s: %s", rem.Recipient, rem.DueTime, rem.Content)
+			case err, ok := <-fetcherErrors:
+				if ok {
+					log.Error().Err(err).Msg("fetcher")
+				} else {
+					fetcherErrors = nil
+				}
+			case err, ok := <-converterErrors:
+				if ok {
+					log.Error().Err(err).Msg("converter")
+				} else {
+					converterErrors = nil
+				}
+			case err, ok := <-saverErrors:
+				if ok {
+					log.Error().Err(err).Msg("saver")
+				} else {
+					saverErrors = nil
+				}
+			case err, ok := <-querierErrors:
+				if ok {
+					log.Error().Err(err).Msg("querier")
+				} else {
+					querierErrors = nil
+				}
+			case err, ok := <-senderErrors:
+				if ok {
+					log.Error().Err(err).Msg("sender")
+				} else {
+					senderErrors = nil
+				}
 			}
 		}
-	}}
+	},
+}

@@ -6,17 +6,27 @@ import (
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/jbchouinard/mxremind/pkg/config"
 )
 
-func ConnectImap(conf *MailConfig) (*client.Client, error) {
-	client, err := client.DialTLS(fmt.Sprintf("%v:%v", conf.ImapHost, conf.ImapPort), conf.ImapTlsConfig)
+func ConnectImap(conf *config.ServerConfig) (*client.Client, error) {
+	var c *client.Client
+	var err error
+	addr := fmt.Sprintf("%v:%v", conf.Host, conf.Port)
+	if conf.Tls.Enabled {
+		c, err = client.DialTLS(addr, conf.TlsConfig())
+	} else {
+		c, err = client.Dial(addr)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if err := client.Login(conf.ImapUsername, conf.ImapPassword); err != nil {
-		return nil, err
+	if conf.Authenticated {
+		if err := c.Login(conf.Address, conf.Password); err != nil {
+			return nil, err
+		}
 	}
-	return client, nil
+	return c, nil
 }
 
 type Mail struct {
@@ -27,69 +37,80 @@ type Mail struct {
 }
 
 type MailFetcher struct {
-	Conf   *MailConfig
-	Mail   chan<- *Mail
-	Errors chan<- error
-	Done   <-chan chan<- bool
+	Conf        *config.Config
+	MaxMessages uint32
+	Done        <-chan chan<- bool
+	Mail        chan<- *Mail
+	Errors      chan<- error
 }
 
-func (mc *MailFetcher) Run(wait time.Duration, maxMessages uint32) error {
-	imapClient, err := ConnectImap(mc.Conf)
+func NewMailFetcher(conf *config.Config, maxMessages uint32, done <-chan chan<- bool) (*MailFetcher, <-chan *Mail, <-chan error) {
+	mail := make(chan *Mail, maxMessages)
+	errors := make(chan error)
+	return &MailFetcher{conf, maxMessages, done, mail, errors}, mail, errors
+}
+
+func (f *MailFetcher) RunOnce() {
+	imapClient, err := ConnectImap(f.Conf.IMAP)
 	if err != nil {
-		return err
+		f.Errors <- err
+		return
 	}
 	defer imapClient.Logout()
+	mbox, err := imapClient.Select(f.Conf.Mailbox.In, false)
+	if err != nil {
+		f.Errors <- err
+		return
+	}
+	f.Conf.Logf("Contains %d messages", mbox.Messages)
+	if mbox.Messages == 0 {
+		return
+	}
+	from, to := rangeLastN(f.MaxMessages, mbox.Messages)
+	f.Conf.Logf("Fetching messages %d..%d", from, to)
+	seqset := rangeSeq(from, to)
+	messages := make(chan *imap.Message, f.MaxMessages)
+	done := make(chan error, 1)
+	go func() {
+		if err := imapClient.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messages); err != nil {
+			done <- err
+		} else {
+			done <- imapClient.Move(seqset, f.Conf.Mailbox.Processed)
+		}
+	}()
+	for message := range messages {
+		if len(message.Envelope.From) == 0 {
+			f.Errors <- fmt.Errorf("message %q has no From", message.Envelope.MessageId)
+			return
+		}
+		f.Mail <- &Mail{
+			From:      message.Envelope.From[0].Address(),
+			Subject:   message.Envelope.Subject,
+			MessageId: message.Envelope.MessageId,
+			Location:  f.Conf.Location(),
+		}
+	}
+	if err := <-done; err != nil {
+		f.Errors <- err
+	}
+}
+
+func (f *MailFetcher) Run(wait time.Duration) {
 	for {
 		select {
-		case done := <-mc.Done:
-			close(mc.Mail)
-			close(mc.Errors)
+		case done := <-f.Done:
+			close(f.Mail)
+			close(f.Errors)
 			done <- true
+			return
 		case <-time.After(wait):
 		}
-
-		mbox, err := imapClient.Select(mc.Conf.MailboxIn, false)
-		if err != nil {
-			mc.Errors <- err
-			continue
-		}
-		mc.Conf.Logf("Contains %d messages", mbox.Messages)
-		if mbox.Messages == 0 {
-			continue
-		}
-		from, to := rangeLastN(maxMessages, mbox.Messages)
-		mc.Conf.Logf("Fetching messages %d..%d", from, to)
-		seqset := rangeSeq(from, to)
-		messages := make(chan *imap.Message, maxMessages)
-		done := make(chan error, 1)
-		go func() {
-			if err := imapClient.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messages); err != nil {
-				done <- err
-			} else {
-				done <- imapClient.Move(seqset, mc.Conf.MailboxProcessed)
-			}
-		}()
-		for message := range messages {
-			if len(message.Envelope.From) < 1 {
-				mc.Errors <- fmt.Errorf("message %q has no From", message.Envelope.MessageId)
-				continue
-			}
-			mc.Mail <- &Mail{
-				From:      message.Envelope.From[0].Address(),
-				Subject:   message.Envelope.Subject,
-				MessageId: message.Envelope.MessageId,
-				Location:  mc.Conf.Location,
-			}
-		}
-		if err := <-done; err != nil {
-			mc.Errors <- err
-		}
-
+		f.RunOnce()
 	}
 }
 
 type MailFetchError struct {
-	Conf MailConfig
+	Conf config.Config
 	Err  error
 }
 
