@@ -25,29 +25,29 @@ Alternatively, options can be provided by environment variables, or some by CLI 
 
 CLI flags have highest precedence, followed by environment variables, and finally the configuration file.
 
-| YAML Key          | Environment Variable       | Example                             | Details                                             |
-|-------------------|----------------------------|-------------------------------------|-----------------------------------------------------|
-| timezone          | MXREMIND_TIMEZONE          | America/Montreal                    | Default timezone for reminders.                     |
-| fetch_interval    | MXREMIND_FETCH_INTERVAL    |                                     | Interval in seconds to fetch emails.                |
-| send_interval     | MXREMIND_SEND_INTERVAL     |                                     | Interval in seconds to send reminder emails.        |
-| database.url      | MXREMIND_DATABASE_URL      | postgresql://user:pass@host:5432/db | Database connection string.                         |
-| database.migrate  | MXREMIND_DATABASE_migrate  | true                                | Automatically apply database migrations on startup. |
-| mailbox.in        | MXREMIND_MAILBOX_IN        | INBOX/Reminders                     | Mailbox to monitor for setting reminders.           |
-| mailbox.processed | MXREMIND_MAILBOX_PROCESSED | INBOX/Reminders/Processed           | Mailbox to move processed reminders to.             |
-| smtp.address      | MXREMIND_SMTP_ADDRESS      | myname@example.com                  | SMTP server username.                               |
-| smtp.password     | MXREMIND_SMTP_PASSWORD     | mypassword123!                      | SMTP server password.                               |
-| smtp.host         | MXREMIND_SMTP_HOST         | smtp.example.com                    | SMTP server host.                                   |
-| smtp.port         | MXREMIND_SMTP_PORT         | 587                                 | SMTP server port.                                   |
-| imap.address      | MXREMIND_IMAP_ADDRESS      | myname@example.com                  | IMAP server username.                               |
-| imap.password     | MXREMIND_IMAP_PASSWORD     | mypassword123!                      | IMAP server password.                               |
-| imap.host         | MXREMIND_IMAP_HOST         | imap.example.com                    | IMAP server host.                                   |
-| imap.port         | MXREMIND_IMAP_PORT         | 993                                 | IMAP server port.                                   |                         |
+| Environment Variable       | Example                             | Details                               |
+|----------------------------|-------------------------------------|-------------------------------------- |
+| MXREMIND_TIMEZONE          | America/Montreal                    | Default timezone for reminders.       |
+| MXREMIND_FETCH_INTERVAL    | 60                                  | Interval in seconds to fetch emails.  |
+| MXREMIND_SEND_INTERVAL     | 60                                  | Interval in seconds to send emails.   |
+| MXREMIND_DATABASE_URL      | postgresql://user:pass@host:5432/db | Database connection string.           |
+| MXREMIND_DATABASE_MIGRATE  | true                                | Apply database migrations on startup. |
+| MXREMIND_MAILBOX_IN        | INBOX/Reminders                     | Mailbox to fetch from.                |
+| MXREMIND_MAILBOX_PROCESSED | INBOX/Reminders/Processed           | Mailbox to move processed emails.     |
+| MXREMIND_SMTP_ADDRESS      | myname@example.com                  | SMTP server username.                 |
+| MXREMIND_SMTP_PASSWORD     | mypassword123!                      | SMTP server password.                 |
+| MXREMIND_SMTP_HOST         | smtp.example.com                    | SMTP server host.                     |
+| MXREMIND_SMTP_PORT         | 587                                 | SMTP server port.                     |
+| MXREMIND_IMAP_ADDRESS      | myname@example.com                  | IMAP server username.                 |
+| MXREMIND_IMAP_PASSWORD     | mypassword123!                      | IMAP server password.                 |
+| MXREMIND_IMAP_HOST         | imap.example.com                    | IMAP server host.                     |
+| MXREMIND_IMAP_PORT         | 993                                 | IMAP server port.                     |
 
 ## Usage
 
 Start the server:
 
-```sh
+```shð
 mxremind start
 ```
 
