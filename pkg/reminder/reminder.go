@@ -57,26 +57,34 @@ type ReminderMailConverter struct {
 	Errors    chan<- error
 }
 
+func (rmc *ReminderMailConverter) RunOnce() bool {
+	msg, ok := <-rmc.Mail
+	if !ok {
+		rmc.Close()
+		return false
+	}
+	rem, err := ReminderFromMail(msg)
+	if err != nil {
+		rmc.Errors <- fmt.Errorf("%s - %s: %w", msg.From, msg.MessageId, err)
+	} else {
+		rmc.Reminders <- rem
+	}
+	return true
+}
+
+func (rmc *ReminderMailConverter) Close() {
+	close(rmc.Reminders)
+	close(rmc.Errors)
+}
+
 func (rmc *ReminderMailConverter) Run() {
-	for {
-		msg, ok := <-rmc.Mail
-		if !ok {
-			close(rmc.Reminders)
-			close(rmc.Errors)
-			return
-		}
-		rem, err := ReminderFromMail(msg)
-		if err != nil {
-			rmc.Errors <- fmt.Errorf("%s - %s: %w", msg.From, msg.MessageId, err)
-		} else {
-			rmc.Reminders <- rem
-		}
+	for rmc.RunOnce() {
 	}
 }
 
 func NewReminderMailConverter(mail <-chan *mail.Mail) (*ReminderMailConverter, <-chan *Reminder, <-chan error) {
 	reminders := make(chan *Reminder)
-	errors := make(chan error)
+	errors := make(chan error, 1)
 	return &ReminderMailConverter{mail, reminders, errors}, reminders, errors
 }
 
@@ -87,7 +95,7 @@ type ReminderSaver struct {
 }
 
 func NewReminderSaver(pool *pgxpool.Pool, reminders <-chan *Reminder) (*ReminderSaver, <-chan error) {
-	errors := make(chan error)
+	errors := make(chan error, 1)
 	return &ReminderSaver{pool, reminders, errors}, errors
 }
 
@@ -115,6 +123,8 @@ func (rs *ReminderSaver) RunOnce() bool {
 	return true
 }
 
+// TODO Close
+
 func (rs *ReminderSaver) Run() {
 	for {
 		if ok := rs.RunOnce(); !ok {
@@ -130,23 +140,27 @@ type ReminderSender struct {
 }
 
 func NewReminderSender(reminders <-chan *Reminder, sender Sender) (*ReminderSender, <-chan error) {
-	errors := make(chan error)
+	errors := make(chan error, 1)
 	return &ReminderSender{sender, errors, reminders}, errors
 }
 
+func (rs *ReminderSender) RunOnce() bool {
+	rem, ok := <-rs.Reminders
+	if !ok {
+		return false
+	}
+	if err := rs.Sender.Send(
+		rem.Recipient,
+		"Reminder: "+rem.Content,
+		"",
+	); err != nil {
+		rs.Errors <- err
+	}
+	return true
+}
+
 func (rs *ReminderSender) Run() {
-	for {
-		rem, ok := <-rs.Reminders
-		if !ok {
-			return
-		}
-		if err := rs.Sender.Send(
-			rem.Recipient,
-			"Reminder: "+rem.Content,
-			"",
-		); err != nil {
-			rs.Errors <- err
-		}
+	for rs.RunOnce() {
 	}
 }
 
@@ -159,7 +173,7 @@ type DueReminderQuerier struct {
 
 func NewDueReminderQuerier(pool *pgxpool.Pool, done <-chan chan<- bool) (*DueReminderQuerier, <-chan *Reminder, <-chan error) {
 	reminders := make(chan *Reminder)
-	errors := make(chan error)
+	errors := make(chan error, 1)
 	return &DueReminderQuerier{pool, done, reminders, errors}, reminders, errors
 }
 
@@ -193,10 +207,16 @@ func (q *DueReminderQuerier) RunOnce() {
 	}
 }
 
+func (q *DueReminderQuerier) Close() {
+	close(q.Reminders)
+	close(q.Errors)
+}
+
 func (q *DueReminderQuerier) Run(wait time.Duration) {
 	for {
 		select {
 		case done := <-q.Done:
+			q.Close()
 			done <- true
 			return
 		case <-time.After(wait):

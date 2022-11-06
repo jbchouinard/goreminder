@@ -7,6 +7,7 @@ import (
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/jbchouinard/mxremind/pkg/config"
+	"github.com/rs/zerolog/log"
 )
 
 func ConnectImap(conf *config.ServerConfig) (*client.Client, error) {
@@ -44,9 +45,11 @@ type MailFetcher struct {
 	Errors      chan<- error
 }
 
-func NewMailFetcher(conf *config.Config, maxMessages uint32, done <-chan chan<- bool) (*MailFetcher, <-chan *Mail, <-chan error) {
+func NewMailFetcher(
+	conf *config.Config, maxMessages uint32, done <-chan chan<- bool,
+) (*MailFetcher, <-chan *Mail, <-chan error) {
 	mail := make(chan *Mail, maxMessages)
-	errors := make(chan error)
+	errors := make(chan error, 1)
 	return &MailFetcher{conf, maxMessages, done, mail, errors}, mail, errors
 }
 
@@ -62,12 +65,12 @@ func (f *MailFetcher) RunOnce() {
 		f.Errors <- err
 		return
 	}
-	f.Conf.Logf("Contains %d messages", mbox.Messages)
+	log.Info().Msgf("%s/%s contains %d messages", f.Conf.IMAP.Address, f.Conf.Mailbox.In, mbox.Messages)
 	if mbox.Messages == 0 {
 		return
 	}
 	from, to := rangeLastN(f.MaxMessages, mbox.Messages)
-	f.Conf.Logf("Fetching messages %d..%d", from, to)
+	log.Info().Msgf("%s/%s fetching messages %d-%d", f.Conf.IMAP.Address, f.Conf.Mailbox.In, from, to)
 	seqset := rangeSeq(from, to)
 	messages := make(chan *imap.Message, f.MaxMessages)
 	done := make(chan error, 1)
@@ -95,12 +98,16 @@ func (f *MailFetcher) RunOnce() {
 	}
 }
 
+func (f *MailFetcher) Close() {
+	close(f.Mail)
+	close(f.Errors)
+}
+
 func (f *MailFetcher) Run(wait time.Duration) {
 	for {
 		select {
 		case done := <-f.Done:
-			close(f.Mail)
-			close(f.Errors)
+			f.Close()
 			done <- true
 			return
 		case <-time.After(wait):
@@ -115,7 +122,7 @@ type MailFetchError struct {
 }
 
 func (mfe *MailFetchError) Error() string {
-	return fmt.Sprintf("%s: %s", mfe.Conf.Describe(), mfe.Err)
+	return fmt.Sprintf("%s/%s %s", mfe.Conf.IMAP.Address, mfe.Conf.Mailbox.In, mfe.Err)
 }
 
 func (mfe *MailFetchError) Unwrap() error {

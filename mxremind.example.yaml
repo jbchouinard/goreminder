@@ -3,9 +3,8 @@ fetch_interval: 60
 send_interval: 60
 database:
   url: postgresql://mxremind:mxremind@localhost:5432/mxremind
-  migrate: true
 mailbox:
-  in: Inbox
+  in: INBOX
   processed: Trash
 smtp:
   address: myuser@example.com

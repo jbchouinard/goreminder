@@ -27,6 +27,7 @@ func Execute() {
 
 var cfgFile string
 var jsonLog bool
+var migrateDatabase bool
 
 func init() {
 	cobra.OnInitialize(initLogging)

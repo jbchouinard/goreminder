@@ -29,7 +29,7 @@ services:
       - MAIL_USER_1=reminders
       - MAIL_PASSWORD_1=reminderspass
       - MAIL_USER_2=alice
-      - MAIL_USER_2=alicepass
+      - MAIL_PASSWORD_2=alicepass
 
 volumes:
   pgdata: {}

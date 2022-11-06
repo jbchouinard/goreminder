@@ -1,0 +1,25 @@
+timezone: America/Montreal
+fetch_interval: 5
+send_interval: 5
+database:
+  url: postgresql://mxremind:mxremind@localhost:5432/mxremind
+mailbox:
+  in: INBOX
+  processed: Trash
+smtp:
+  address: reminders@local.test
+  password: reminderspass
+  host: localhost
+  port: 25
+  authenticated: false
+  tls:
+    enabled: false
+imap:
+  address: reminders@local.test
+  password: reminderspass
+  host: localhost
+  port: 993
+  authenticated: true
+  tls:
+    enabled: true
+    insecure: true

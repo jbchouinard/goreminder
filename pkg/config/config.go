@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/tls"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -10,7 +9,6 @@ import (
 )
 
 func init() {
-	viper.SetDefault("database.migrate", true)
 	viper.SetDefault("smtp.port", 587)
 	viper.SetDefault("smtp.authenticated", true)
 	viper.SetDefault("smtp.tls.enabled", true)
@@ -19,6 +17,8 @@ func init() {
 	viper.SetDefault("imap.tls.enabled", true)
 	viper.SetDefault("imap.tls.insecure", false)
 	viper.SetDefault("imap.authenticated", true)
+	viper.SetDefault("send_interval", 60)
+	viper.SetDefault("fetch_interval", 60)
 }
 
 func assertKeys(required []string) {
@@ -88,17 +88,14 @@ func GetMailboxConfig(prefix string) *MailboxConfig {
 }
 
 type DatabaseConfig struct {
-	Migrate bool   `yaml:"migrate"`
-	URL     string `yaml:"url"`
+	URL string `yaml:"url"`
 }
 
 func GetDatabaseConfig(prefix string) *DatabaseConfig {
-	migrateKey := prefix + ".migrate"
 	urlKey := prefix + ".url"
-	assertKeys([]string{migrateKey, urlKey})
+	assertKeys([]string{urlKey})
 	return &DatabaseConfig{
-		Migrate: viper.GetBool(migrateKey),
-		URL:     viper.GetString(urlKey),
+		URL: viper.GetString(urlKey),
 	}
 }
 
@@ -131,16 +128,4 @@ func GetConfig() *Config {
 		SMTP:          GetServerConfig("smtp"),
 		IMAP:          GetServerConfig("imap"),
 	}
-}
-
-func (mc *Config) Describe() string {
-	return fmt.Sprintf("%s:%s", mc.IMAP.Address, mc.Mailbox.In)
-}
-
-func (mc *Config) Log(message string) {
-	log.Info().Msgf("%s: %s", mc.Describe(), message)
-}
-
-func (mc *Config) Logf(format string, p ...any) {
-	mc.Log(fmt.Sprintf(format, p...))
 }
