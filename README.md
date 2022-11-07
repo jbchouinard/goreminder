@@ -16,7 +16,48 @@ go install github.com/jbchouinard/mxremind@latest
 
 Or use docker-compose:
 
-https://github.com/jbchouinard/mxremind/blob/main/docker-compose.example.yaml
+```yaml
+version: '3'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=mxremind
+      - POSTGRES_PASSWORD=mxremind
+      - POSTGRES_DB=mxremind
+    volumes:
+      - pgdata:/var/lib/postgresql/data 
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "mxremind", "-U", "mxremind" ]
+      timeout: 30s
+      interval: 10s
+      retries: 10
+
+  mxremind:
+    # build: https://github.com/jbchouinard/mxremind.git
+    image: jbchouinard/mxremind:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - MXREMIND_TIMEZONE=America/New York
+      - MXREMIND_DATABASE_URL=postgresql://mxremind:mxremind@db/mxremind
+      - MXREMIND_MAILBOX_IN=INBOX
+      - MXREMIND_MAILBOX_PROCESSED=
+      - MXREMIND_SMTP_ADDRESS=myname@example.com
+      - MXREMIND_SMTP_PASSWORD=mypass
+      - MXREMIND_SMTP_HOST=smtp.example.com
+      - MXREMIND_SMTP_PORT=587
+      - MXREMIND_IMAP_ADDRESS=myname@example.com
+      - MXREMIND_IMAP_PASSWORD=mypass
+      - MXREMIND_IMAP_HOST=imap.example.com
+      - MXREMIND_IMAP_PORT=993
+
+volumes:
+  pgdata: {}
+```
 
 ## Configuration
 
