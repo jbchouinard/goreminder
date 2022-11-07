@@ -102,7 +102,7 @@ func NewReminderSaver(pool *pgxpool.Pool, reminders <-chan *Reminder) (*Reminder
 func (rs *ReminderSaver) RunOnce() bool {
 	rem, ok := <-rs.Reminders
 	if !ok {
-		close(rs.Errors)
+		rs.Close()
 		return false
 	}
 	ctx := context.Background()
@@ -124,6 +124,9 @@ func (rs *ReminderSaver) RunOnce() bool {
 }
 
 // TODO Close
+func (rs *ReminderSaver) Close() {
+	close(rs.Errors)
+}
 
 func (rs *ReminderSaver) Run() {
 	for {

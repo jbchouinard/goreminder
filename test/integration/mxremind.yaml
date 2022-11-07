@@ -7,7 +7,7 @@ mailbox:
   in: INBOX
   processed: Trash
 smtp:
-  address: reminders@local.test
+  address: reminders@mail.test
   password: reminderspass
   host: localhost
   port: 25
@@ -15,7 +15,7 @@ smtp:
   tls:
     enabled: false
 imap:
-  address: reminders@local.test
+  address: reminders@mail.test
   password: reminderspass
   host: localhost
   port: 993
