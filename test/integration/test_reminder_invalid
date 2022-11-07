@@ -4,8 +4,9 @@ $ mxremind -c alice.yaml send reminders@mail.test "say hello"
 @ <nil> INF using config file alice.yaml
 |
 
-$ mxremind -c service.yaml batch
+$ mxremind -c service.yaml batch --migrate
 @ <nil> INF using config file service.yaml
+@ <nil> INF migrating database to version 1
 @ <nil> INF reminders@mail.test/INBOX contains 1 messages
 @ <nil> INF reminders@mail.test/INBOX fetching messages 1-1
 @ <nil> INF found 0 reminders due

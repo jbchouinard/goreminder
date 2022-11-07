@@ -12,10 +12,10 @@ services:
       retries: 10
     restart: always
     environment:
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=root
+      - POSTGRES_USER=mxremind
+      - POSTGRES_PASSWORD=mxremind
+      - POSTGRES_DB=mxremind
     volumes:
-      - ./scripts/db:/docker-entrypoint-initdb.d/
       - pgdata:/var/lib/postgresql/data 
 
   mail:

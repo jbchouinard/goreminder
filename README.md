@@ -70,6 +70,7 @@ This repo contains integrations tests that use [tush](https://github.com/darius/
 Add `bin/` and `test/integration/scripts` to PATH, then run:
 
 ```sh
+docker-compose -f test/integration/docker-compose-yaml up -d
 make test
 ```
 
