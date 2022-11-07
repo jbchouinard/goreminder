@@ -31,8 +31,8 @@ CLI flags have highest precedence, followed by environment variables, and finall
 | MXREMIND_FETCH_INTERVAL    | 60                                  | Interval in seconds to fetch emails.  |
 | MXREMIND_SEND_INTERVAL     | 60                                  | Interval in seconds to send emails.   |
 | MXREMIND_DATABASE_URL      | postgresql://user:pass@host:5432/db | Database connection string.           |
-| MXREMIND_MAILBOX_IN        | INBOX/Reminders                     | Mailbox to fetch from.                |
-| MXREMIND_MAILBOX_PROCESSED | INBOX/Reminders/Processed           | Mailbox to move processed emails.     |
+| MXREMIND_MAILBOX_IN        | INBOX                               | Mailbox to fetch from.                |
+| MXREMIND_MAILBOX_PROCESSED | Trash                               | Mailbox to move processed emails.     |
 | MXREMIND_SMTP_ADDRESS      | myname@example.com                  | SMTP server username.                 |
 | MXREMIND_SMTP_PASSWORD     | mypassword123!                      | SMTP server password.                 |
 | MXREMIND_SMTP_HOST         | smtp.example.com                    | SMTP server host.                     |
