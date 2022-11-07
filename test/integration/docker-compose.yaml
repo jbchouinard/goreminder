@@ -19,8 +19,8 @@ services:
       - pgdata:/var/lib/postgresql/data 
 
   mail:
-    image: docker-testing-mail
-    build: https://github.com/jbchouinard/docker-testing-mail.git
+    # build: https://github.com/jbchouinard/docker-testing-mail.git
+    image: jbchouinard/docker-testing-mail:latest
     ports:
     - "25:25"
     - "143:143"
