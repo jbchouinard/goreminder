@@ -2,7 +2,7 @@
 
 MxRemind is a service for setting and receiving reminders via e-mail.
 
-MxRemind is not a mail server; it queries a mailbox using IMAP to fetch e-mails that set new reminders.
+MxRemind queries a mailbox using IMAP to fetch e-mails that set new reminders.
 Any e-mail in the mailbox that matches the reminder format will set a reminder for the sender.
 
 ## Installation
@@ -18,12 +18,12 @@ go install github.com/jbchouinard/mxremind@latest
 
 MxRemind requires a Postgresql database.
 
-By default, MxRemind will read the configuration file `mxremind.yaml` in the current directory if it exists.
+By default, MxRemind looks for the configuration file `mxremind.yaml` in the current directory.
 A different configuration file can be specified with the `--config` flag.
 
-Alternatively, options can be provided by environment variables, or some by CLI flags.
+Alternatively, options can be provided by environment variables, or CLI flags.
 
-CLI flags have highest precedence, followed by environment variables, and finally the configuration file.
+CLI flags have highest precedence, followed by environment variables, and finally configuration file.
 
 | Environment Variable       | Example                             | Details                               |
 |----------------------------|-------------------------------------|-------------------------------------- |
@@ -43,6 +43,8 @@ CLI flags have highest precedence, followed by environment variables, and finall
 | MXREMIND_IMAP_PORT         | 993                                 | IMAP server port.                     |
 
 ## Usage
+
+Copy `mxremind.example.yaml` to `mxremind.yaml` and edit it.
 
 Start the server:
 

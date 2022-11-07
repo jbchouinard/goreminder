@@ -10,7 +10,7 @@ $ mxremind -c service.yaml batch
 @ <nil> INF found 1 reminders due
 @ <nil> INF sent reminder to "alice@mail.test"
 
-$ mxremind -c alice.yaml fetch INBOX
+$ mxremind -c alice.yaml fetch INBOX --trash
 | Mail for "alice@mail.test"
 | "reminders@mail.test" "Reminder: do the thing"
 @ <nil> INF using config file alice.yaml

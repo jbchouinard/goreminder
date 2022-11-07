@@ -12,16 +12,18 @@ import (
 )
 
 var fetchCount uint32
+var trashFetchedMessages bool
 
 func init() {
 	fetchCmd.Flags().Uint32Var(&fetchCount, "count", 1, "number of messages to fetch")
+	fetchCmd.Flags().BoolVar(&trashFetchedMessages, "trash", false, "trash fetched messaged")
 
 	rootCmd.AddCommand(fetchCmd)
 }
 
 var fetchCmd = &cobra.Command{
 	Use:   "fetch",
-	Short: "Fetch mails from configured IMAP account",
+	Short: "Fetch messages from the configured IMAP account",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		conf := config.GetServerConfig("imap")
@@ -50,7 +52,11 @@ var fetchCmd = &cobra.Command{
 				if err := imapClient.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messages); err != nil {
 					done <- err
 				} else {
-					done <- imapClient.Move(seqset, "Trash")
+					if trashFetchedMessages {
+						done <- imapClient.Move(seqset, "Trash")
+					} else {
+						done <- nil
+					}
 				}
 			}()
 		}()
