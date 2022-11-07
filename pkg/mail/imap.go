@@ -104,10 +104,10 @@ func (f *MailFetcher) Close() {
 }
 
 func (f *MailFetcher) Run(wait time.Duration) {
+	defer f.Close()
 	for {
 		select {
 		case done := <-f.Done:
-			f.Close()
 			done <- true
 			return
 		case <-time.After(wait):

@@ -55,13 +55,14 @@ type ReminderMailConverter struct {
 	Mail      <-chan *mail.Mail
 	Reminders chan<- *Reminder
 	Errors    chan<- error
+	finished  bool
 }
 
-func (rmc *ReminderMailConverter) RunOnce() bool {
+func (rmc *ReminderMailConverter) RunOnce() {
 	msg, ok := <-rmc.Mail
 	if !ok {
-		rmc.Close()
-		return false
+		rmc.finished = true
+		return
 	}
 	rem, err := ReminderFromMail(msg)
 	if err != nil {
@@ -69,7 +70,7 @@ func (rmc *ReminderMailConverter) RunOnce() bool {
 	} else {
 		rmc.Reminders <- rem
 	}
-	return true
+	return
 }
 
 func (rmc *ReminderMailConverter) Close() {
@@ -78,38 +79,41 @@ func (rmc *ReminderMailConverter) Close() {
 }
 
 func (rmc *ReminderMailConverter) Run() {
-	for rmc.RunOnce() {
+	defer rmc.Close()
+	for !rmc.finished {
+		rmc.RunOnce()
 	}
 }
 
 func NewReminderMailConverter(mail <-chan *mail.Mail) (*ReminderMailConverter, <-chan *Reminder, <-chan error) {
 	reminders := make(chan *Reminder)
 	errors := make(chan error, 1)
-	return &ReminderMailConverter{mail, reminders, errors}, reminders, errors
+	return &ReminderMailConverter{mail, reminders, errors, false}, reminders, errors
 }
 
 type ReminderSaver struct {
 	Pool      *pgxpool.Pool
 	Reminders <-chan *Reminder
 	Errors    chan<- error
+	finished  bool
 }
 
 func NewReminderSaver(pool *pgxpool.Pool, reminders <-chan *Reminder) (*ReminderSaver, <-chan error) {
 	errors := make(chan error, 1)
-	return &ReminderSaver{pool, reminders, errors}, errors
+	return &ReminderSaver{pool, reminders, errors, false}, errors
 }
 
-func (rs *ReminderSaver) RunOnce() bool {
+func (rs *ReminderSaver) RunOnce() {
 	rem, ok := <-rs.Reminders
 	if !ok {
-		rs.Close()
-		return false
+		rs.finished = true
+		return
 	}
 	ctx := context.Background()
 	tx, err := rs.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		rs.Errors <- err
-		return true
+		return
 	}
 	defer tx.Rollback(ctx)
 	dao := ReminderDAO{Tx: tx, Context: ctx}
@@ -120,18 +124,18 @@ func (rs *ReminderSaver) RunOnce() bool {
 			rs.Errors <- err
 		}
 	}
-	return true
+	return
 }
 
-// TODO Close
 func (rs *ReminderSaver) Close() {
 	close(rs.Errors)
 }
 
 func (rs *ReminderSaver) Run() {
+	defer rs.Close()
 	for {
-		if ok := rs.RunOnce(); !ok {
-			return
+		for !rs.finished {
+			rs.RunOnce()
 		}
 	}
 }
@@ -140,17 +144,19 @@ type ReminderSender struct {
 	Sender    Sender
 	Errors    chan<- error
 	Reminders <-chan *Reminder
+	finished  bool
 }
 
 func NewReminderSender(reminders <-chan *Reminder, sender Sender) (*ReminderSender, <-chan error) {
 	errors := make(chan error, 1)
-	return &ReminderSender{sender, errors, reminders}, errors
+	return &ReminderSender{sender, errors, reminders, false}, errors
 }
 
-func (rs *ReminderSender) RunOnce() bool {
+func (rs *ReminderSender) RunOnce() {
 	rem, ok := <-rs.Reminders
 	if !ok {
-		return false
+		rs.finished = true
+		return
 	}
 	if err := rs.Sender.Send(
 		rem.Recipient,
@@ -159,11 +165,17 @@ func (rs *ReminderSender) RunOnce() bool {
 	); err != nil {
 		rs.Errors <- err
 	}
-	return true
+	return
+}
+
+func (rs *ReminderSender) Close() {
+	close(rs.Errors)
 }
 
 func (rs *ReminderSender) Run() {
-	for rs.RunOnce() {
+	defer rs.Close()
+	for !rs.finished {
+		rs.RunOnce()
 	}
 }
 
@@ -216,10 +228,10 @@ func (q *DueReminderQuerier) Close() {
 }
 
 func (q *DueReminderQuerier) Run(wait time.Duration) {
+	defer q.Close()
 	for {
 		select {
 		case done := <-q.Done:
-			q.Close()
 			done <- true
 			return
 		case <-time.After(wait):

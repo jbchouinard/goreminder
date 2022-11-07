@@ -1,7 +1,6 @@
 package reminder
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -25,6 +24,20 @@ func recvErrors(name string, errors <-chan error, ok *bool) {
 	}
 }
 
+type Component interface {
+	Close()
+	RunOnce()
+}
+
+func runOnce(c Component, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer c.Close()
+		c.RunOnce()
+	}()
+}
+
 func RunOnce(conf *config.Config) (ok bool) {
 	db.SetDatabaseUrl(conf.Database.URL)
 	dbpool, err := db.Connect()
@@ -45,46 +58,12 @@ func RunOnce(conf *config.Config) (ok bool) {
 	sender, senderErrors := NewReminderSender(dueReminders, &mail.SmtpSender{Conf: conf.SMTP})
 
 	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		querier.RunOnce()
-		querier.Close()
-		fmt.Println("querier done")
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		fetcher.RunOnce()
-		fetcher.Close()
-		fmt.Println("fetcher done")
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		converter.RunOnce()
-		fmt.Println("converter done")
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		saver.RunOnce()
-		fmt.Println("saver done")
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		sender.RunOnce()
-		fmt.Println("sender done")
-		wg.Done()
-	}()
-
+	runOnce(querier, &wg)
+	runOnce(fetcher, &wg)
+	runOnce(converter, &wg)
+	runOnce(saver, &wg)
+	runOnce(sender, &wg)
 	wg.Wait()
-
 	ok = true
 	recvErrors("fetcher", fetcherErrors, &ok)
 	recvErrors("querier", querierErrors, &ok)
