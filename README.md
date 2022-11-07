@@ -7,12 +7,16 @@ Any e-mail in the mailbox that matches the reminder format will set a reminder f
 
 ## Installation
 
-Requirements
+### Requirements
 - golang 1.19+
 
 ```sh
 go install github.com/jbchouinard/mxremind@latest
 ```
+
+Or use docker-compose:
+
+https://github.com/jbchouinard/mxremind/blob/main/docker-compose.example.yaml
 
 ## Configuration
 
@@ -67,7 +71,7 @@ A reminder e-mail will be sent back to the sender with the message as subject at
 ## Tests
 
 This repo contains integrations tests that use [tush](https://github.com/darius/tush).
-Add `bin/` and `test/integration/scripts` to PATH, then run:
+Add `bin/` and `test/integration/scripts` to `PATH`, then run:
 
 ```sh
 docker-compose -f test/integration/docker-compose-yaml up -d

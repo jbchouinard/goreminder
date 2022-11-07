@@ -17,8 +17,8 @@ services:
       retries: 10
 
   mxremind:
-    build: .
-    image: jbchouinard/mxremind
+    # build: .
+    image: jbchouinard/mxremind:latest
     depends_on:
       db:
         condition: service_healthy
