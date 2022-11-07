@@ -64,7 +64,16 @@ these formats:
 
 A reminder e-mail will be sent back to the sender with the message as subject at the specified time.
 
-# License
+## Tests
+
+This repo contains integrations tests that use [tush](https://github.com/darius/tush).
+Add `bin/` and `test/integration/scripts` to PATH, then run:
+
+```sh
+make test
+```
+
+## License
 
 Copyright 2022 Jerome Boisvert-Chouinard
 
