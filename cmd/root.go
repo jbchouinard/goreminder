@@ -74,6 +74,7 @@ func initConfig() {
 func initLogging() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if !jsonLog {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		output := zerolog.ConsoleWriter{Out: os.Stderr, NoColor: true}
+		log.Logger = zerolog.New(output)
 	}
 }

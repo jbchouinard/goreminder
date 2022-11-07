@@ -3,7 +3,11 @@ default: bin/mxremind
 bin/mxremind: main.go
 	go build -o $@ $<
 
-clean:
-	rm -rf bin/*
+test: bin/mxremind
+	docker-compose -f test/integration/docker-compose.yaml up -d
+	tush-check test/integration/test_*
 
-.PHONY: default clean
+clean:
+	rm -f bin/mxremind
+
+.PHONY: default test clean

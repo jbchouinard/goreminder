@@ -1,0 +1,13 @@
+$ make-test-configs
+
+$ mxremind -c alice.yaml send reminders@mail.test "say hello"
+@ <nil> INF using config file alice.yaml
+|
+
+$ mxremind -c service.yaml batch
+@ <nil> INF using config file service.yaml
+@ <nil> INF reminders@mail.test/INBOX contains 1 messages
+@ <nil> INF reminders@mail.test/INBOX fetching messages 1-1
+@ <nil> INF found 0 reminders due
+@ <nil> ERR error="converter: alice@mail.test (id=): not a valid reminder spec"
+? 1

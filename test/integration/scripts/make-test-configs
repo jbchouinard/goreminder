@@ -1,6 +1,25 @@
+#!/bin/bash
+
+cat >alice.yaml <<EOT
+smtp:
+  address: alice@mail.test
+  password: alicepass
+  host: localhost
+  port: 25
+  authenticated: false
+  tls:
+    enabled: false
+imap:
+  address: alice@mail.test
+  password: alicepass
+  host: localhost
+  port: 993
+  tls:
+    insecure: true
+EOT
+
+cat >service.yaml <<EOT
 timezone: America/Montreal
-fetch_interval: 5
-send_interval: 5
 database:
   url: postgresql://mxremind:mxremind@localhost:5432/mxremind
 mailbox:
@@ -19,7 +38,6 @@ imap:
   password: reminderspass
   host: localhost
   port: 993
-  authenticated: true
   tls:
-    enabled: true
     insecure: true
+EOT
