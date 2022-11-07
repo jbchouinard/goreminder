@@ -46,8 +46,8 @@ CLI flags have highest precedence, followed by environment variables, and finall
 
 Start the server:
 
-```shð
-mxremind start
+```sh
+mxremind run
 ```
 
 A new reminder is set by sending an e-mail to the configured mailbox with a subject matching one of

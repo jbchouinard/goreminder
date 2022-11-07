@@ -1,6 +1,8 @@
+GO_SRC_FILES = $(shell find ./ -type f -name '*.go')
+
 default: bin/mxremind
 
-bin/mxremind: main.go
+bin/mxremind: $(GO_SRC_FILES)
 	go build -o $@ $<
 
 test: bin/mxremind
