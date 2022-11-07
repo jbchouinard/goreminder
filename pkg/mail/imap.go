@@ -69,9 +69,9 @@ func (f *MailFetcher) RunOnce() {
 	if mbox.Messages == 0 {
 		return
 	}
-	from, to := rangeLastN(f.MaxMessages, mbox.Messages)
+	from, to := RangeLastN(f.MaxMessages, mbox.Messages)
 	log.Info().Msgf("%s/%s fetching messages %d-%d", f.Conf.IMAP.Address, f.Conf.Mailbox.In, from, to)
-	seqset := rangeSeq(from, to)
+	seqset := RangeSeq(from, to)
 	messages := make(chan *imap.Message, f.MaxMessages)
 	done := make(chan error, 1)
 	go func() {
@@ -128,7 +128,7 @@ func (mfe *MailFetchError) Unwrap() error {
 	return mfe.Err
 }
 
-func rangeLastN(n uint32, total uint32) (uint32, uint32) {
+func RangeLastN(n uint32, total uint32) (uint32, uint32) {
 	from := uint32(1)
 	to := total
 	if (total + 1) > n {
@@ -137,7 +137,7 @@ func rangeLastN(n uint32, total uint32) (uint32, uint32) {
 	return from, to
 }
 
-func rangeSeq(from uint32, to uint32) *imap.SeqSet {
+func RangeSeq(from uint32, to uint32) *imap.SeqSet {
 	seqset := new(imap.SeqSet)
 	seqset.AddRange(from, to)
 	return seqset

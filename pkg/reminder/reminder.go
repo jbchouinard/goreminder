@@ -163,7 +163,7 @@ func (rs *ReminderSender) RunOnce() {
 	); err != nil {
 		rs.Errors <- fmt.Errorf("error sending reminder %q to %q: %w", rem.Id, rem.Recipient, err)
 	} else {
-		log.Info().Msgf("sent reminder %q to %q", rem.Id, rem.Recipient)
+		log.Info().Msgf("sent reminder to %q", rem.Recipient)
 	}
 	return
 }

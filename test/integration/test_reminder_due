@@ -1,0 +1,16 @@
+$ make-test-configs
+
+$ mxremind -c alice.yaml send reminders@mail.test "00:00 do the thing"
+@ <nil> INF using config file alice.yaml
+
+$ mxremind -c service.yaml batch
+@ <nil> INF using config file service.yaml
+@ <nil> INF reminders@mail.test/INBOX contains 1 messages
+@ <nil> INF reminders@mail.test/INBOX fetching messages 1-1
+@ <nil> INF found 1 reminders due
+@ <nil> INF sent reminder to "alice@mail.test"
+
+$ mxremind -c alice.yaml fetch INBOX
+| Mail for "alice@mail.test"
+| "reminders@mail.test" "Reminder: do the thing"
+@ <nil> INF using config file alice.yaml
