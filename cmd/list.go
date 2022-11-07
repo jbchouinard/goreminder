@@ -19,6 +19,7 @@ var listCmd = &cobra.Command{
 	Short: "List mailboxes for the configured IMAP account",
 	Run: func(cmd *cobra.Command, args []string) {
 		conf := config.GetServerConfig("imap")
+		fmt.Printf("Mailboxes for %q:\n", conf.Address)
 		imapClient, err := mail.ConnectImap(conf)
 		if err != nil {
 			log.Fatal(err)

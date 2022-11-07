@@ -66,7 +66,7 @@ func (rmc *ReminderMailConverter) RunOnce() {
 	}
 	rem, err := ReminderFromMail(msg)
 	if err != nil {
-		rmc.Errors <- fmt.Errorf("%s - %s: %w", msg.From, msg.MessageId, err)
+		rmc.Errors <- fmt.Errorf("%s (id=%s): %w", msg.From, msg.MessageId, err)
 	} else {
 		rmc.Reminders <- rem
 	}
@@ -133,10 +133,8 @@ func (rs *ReminderSaver) Close() {
 
 func (rs *ReminderSaver) Run() {
 	defer rs.Close()
-	for {
-		for !rs.finished {
-			rs.RunOnce()
-		}
+	for !rs.finished {
+		rs.RunOnce()
 	}
 }
 
@@ -163,7 +161,9 @@ func (rs *ReminderSender) RunOnce() {
 		"Reminder: "+rem.Content,
 		"",
 	); err != nil {
-		rs.Errors <- err
+		rs.Errors <- fmt.Errorf("error sending reminder %q to %q: %w", rem.Id, rem.Recipient, err)
+	} else {
+		log.Info().Msgf("sent reminder %q to %q", rem.Id, rem.Recipient)
 	}
 	return
 }
@@ -181,15 +181,18 @@ func (rs *ReminderSender) Run() {
 
 type DueReminderQuerier struct {
 	Pool      *pgxpool.Pool
-	Done      <-chan chan<- bool
+	Done      <-chan bool
 	Reminders chan<- *Reminder
 	Errors    chan<- error
+	Interval  time.Duration
 }
 
-func NewDueReminderQuerier(pool *pgxpool.Pool, done <-chan chan<- bool) (*DueReminderQuerier, <-chan *Reminder, <-chan error) {
+func NewDueReminderQuerier(
+	interval time.Duration, pool *pgxpool.Pool, done <-chan bool,
+) (*DueReminderQuerier, <-chan *Reminder, <-chan error) {
 	reminders := make(chan *Reminder)
 	errors := make(chan error, 1)
-	return &DueReminderQuerier{pool, done, reminders, errors}, reminders, errors
+	return &DueReminderQuerier{pool, done, reminders, errors, interval}, reminders, errors
 }
 
 func (q *DueReminderQuerier) RunOnce() {
@@ -212,13 +215,11 @@ func (q *DueReminderQuerier) RunOnce() {
 		if err := dao.Update(rem); err != nil {
 			q.Errors <- err
 		} else {
-			if err := tx.Commit(ctx); err != nil {
-				q.Errors <- err
-			} else {
-				q.Reminders <- rem
-
-			}
+			q.Reminders <- rem
 		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		q.Errors <- err
 	}
 }
 
@@ -227,14 +228,13 @@ func (q *DueReminderQuerier) Close() {
 	close(q.Errors)
 }
 
-func (q *DueReminderQuerier) Run(wait time.Duration) {
+func (q *DueReminderQuerier) Run() {
 	defer q.Close()
 	for {
 		select {
-		case done := <-q.Done:
-			done <- true
+		case <-q.Done:
 			return
-		case <-time.After(wait):
+		case <-time.After(q.Interval):
 		}
 		q.RunOnce()
 	}

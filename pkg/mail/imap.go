@@ -40,13 +40,13 @@ type Mail struct {
 type MailFetcher struct {
 	Conf        *config.Config
 	MaxMessages uint32
-	Done        <-chan chan<- bool
+	Done        <-chan bool
 	Mail        chan<- *Mail
 	Errors      chan<- error
 }
 
 func NewMailFetcher(
-	conf *config.Config, maxMessages uint32, done <-chan chan<- bool,
+	conf *config.Config, maxMessages uint32, done <-chan bool,
 ) (*MailFetcher, <-chan *Mail, <-chan error) {
 	mail := make(chan *Mail, maxMessages)
 	errors := make(chan error, 1)
@@ -103,14 +103,13 @@ func (f *MailFetcher) Close() {
 	close(f.Errors)
 }
 
-func (f *MailFetcher) Run(wait time.Duration) {
+func (f *MailFetcher) Run() {
 	defer f.Close()
 	for {
 		select {
-		case done := <-f.Done:
-			done <- true
+		case <-f.Done:
 			return
-		case <-time.After(wait):
+		case <-time.After(time.Duration(f.Conf.FetchInterval) * time.Second):
 		}
 		f.RunOnce()
 	}

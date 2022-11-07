@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jbchouinard/mxremind/pkg/config"
 	"github.com/jbchouinard/mxremind/pkg/db"
@@ -17,15 +20,35 @@ func init() {
 }
 
 var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start the mail reminder service",
+	Use:   "run",
+	Short: "Run the mail reminder service",
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
 		conf := config.GetConfig()
 		if migrateDatabase {
-			if err := db.Migrate(context.Background(), conf.Database.URL); err != nil {
+			if err := db.Migrate(ctx, conf.Database.URL); err != nil {
 				log.Fatal().Err(err).Msg("error applying database migrations")
 			}
 		}
-		reminder.RunForever(conf)
+		service, err := reminder.NewService(ctx, conf)
+		if err != nil {
+			log.Fatal().Err(err).Msg("error initializing service")
+		}
+		defer service.Close()
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		service.Start()
+		for {
+			select {
+			case sig := <-sigs:
+				log.Info().Msgf("received signal %s, shutting down", sig)
+				service.Stop()
+				os.Exit(0)
+			case err := <-service.Errors():
+				log.Error().Err(err).Msg("")
+			}
+		}
 	},
 }

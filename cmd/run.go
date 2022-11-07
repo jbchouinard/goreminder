@@ -18,20 +18,35 @@ func init() {
 }
 
 var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Run the mail reminder",
+	Use:   "batch",
+	Short: "Process a single batch of mail reminders",
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
 		conf := config.GetConfig()
+
 		if migrateDatabase {
-			if err := db.Migrate(context.Background(), conf.Database.URL); err != nil {
+			if err := db.Migrate(ctx, conf.Database.URL); err != nil {
 				log.Fatal().Err(err).Msg("error applying database migrations")
 			}
 		}
-		ok := reminder.RunOnce(conf)
-		if ok {
-			os.Exit(0)
-		} else {
+
+		service, err := reminder.NewService(ctx, conf)
+		if err != nil {
+			log.Fatal().Err(err).Msg("error initializing service")
+		}
+		defer service.Close()
+
+		service.RunOnce()
+
+		errors := service.Drain()
+		for _, err := range errors {
+			log.Error().Err(err).Msg("")
+		}
+
+		if len(errors) > 0 {
 			os.Exit(1)
+		} else {
+			os.Exit(0)
 		}
 	},
 }
