@@ -36,8 +36,7 @@ services:
       retries: 10
 
   mxremind:
-    # build: https://github.com/jbchouinard/mxremind.git
-    image: jbchouinard/mxremind:latest
+    build: https://github.com/jbchouinard/mxremind.git
     depends_on:
       db:
         condition: service_healthy
